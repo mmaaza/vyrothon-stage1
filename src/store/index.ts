@@ -1,54 +1,35 @@
 import { create } from "zustand";
 import type { Node, Edge } from "@xyflow/react";
+import { executePipeline, getCipher, CIPHER_DEFS, PALETTE_GROUPS } from "./ciphers";
+
+export type { CipherDef, ConfigField } from "./ciphers";
+export { CIPHER_DEFS, PALETTE_GROUPS, getCipher };
 
 export type NodeCategory = "sym" | "asym" | "hash" | "kdf" | "codec" | "io";
 
 export type NodeData = {
   label: string;
   algorithm: string;
-  category: NodeCategory;
-  key?: string;
+  category: "sym" | "codec";
+  params: Record<string, string>;
   [key: string]: unknown;
 };
 
-export type AlgorithmDef = {
-  id: string;
-  label: string;
-  category: NodeCategory;
-  badge: string;
-  description: string;
+export type Intermediate = { input: string; output: string };
+
+type PipelineResult = {
+  outputText: string;
+  intermediates: Record<string, Intermediate>;
 };
-
-export const ALGORITHMS: AlgorithmDef[] = [
-  { id: "input",    label: "Input",     category: "io",    badge: "I/O",  description: "Pipeline input" },
-  { id: "output",   label: "Output",    category: "io",    badge: "I/O",  description: "Pipeline output" },
-  { id: "aes-128",  label: "AES-128",   category: "sym",   badge: "SYM",  description: "128-bit AES block cipher" },
-  { id: "aes-256",  label: "AES-256",   category: "sym",   badge: "SYM",  description: "256-bit AES block cipher" },
-  { id: "chacha20", label: "ChaCha20",  category: "sym",   badge: "SYM",  description: "Stream cipher" },
-  { id: "rsa-2048", label: "RSA-2048",  category: "asym",  badge: "ASYM", description: "2048-bit RSA" },
-  { id: "ecc-p256", label: "ECC P-256", category: "asym",  badge: "ASYM", description: "Elliptic curve P-256" },
-  { id: "sha-256",  label: "SHA-256",   category: "hash",  badge: "HASH", description: "256-bit hash" },
-  { id: "sha-512",  label: "SHA-512",   category: "hash",  badge: "HASH", description: "512-bit hash" },
-  { id: "blake2b",  label: "Blake2b",   category: "hash",  badge: "HASH", description: "High-speed hash" },
-  { id: "pbkdf2",   label: "PBKDF2",    category: "kdf",   badge: "KDF",  description: "Password-based KDF" },
-  { id: "argon2id", label: "Argon2id",  category: "kdf",   badge: "KDF",  description: "Memory-hard KDF" },
-  { id: "base64",   label: "Base64",    category: "codec", badge: "ENC",  description: "Base64 encoding" },
-  { id: "hex",      label: "Hex",       category: "codec", badge: "ENC",  description: "Hex encoding" },
-];
-
-export const CATEGORY_GROUPS: { label: string; category: NodeCategory }[] = [
-  { label: "I / O",          category: "io" },
-  { label: "Symmetric",      category: "sym" },
-  { label: "Asymmetric",     category: "asym" },
-  { label: "Hash",           category: "hash" },
-  { label: "Key Derivation", category: "kdf" },
-  { label: "Codec",          category: "codec" },
-];
 
 type FlowStore = {
   nodes: Node<NodeData>[];
   edges: Edge[];
   selectedNodeId: string | null;
+  mode: "encrypt" | "decrypt";
+  inputText: string;
+  outputText: string;
+  intermediates: Record<string, Intermediate>;
 
   setNodes: (nodes: Node<NodeData>[]) => void;
   setEdges: (edges: Edge[]) => void;
@@ -56,34 +37,100 @@ type FlowStore = {
   removeNode: (id: string) => void;
   selectNode: (id: string | null) => void;
   updateNodeData: (id: string, data: Partial<NodeData>) => void;
+  updateNodeParam: (id: string, key: string, value: string) => void;
+  setMode: (mode: "encrypt" | "decrypt") => void;
+  setInputText: (text: string) => void;
   reset: () => void;
 };
 
-const initialState = { nodes: [], edges: [], selectedNodeId: null };
+export const MIN_CIPHER_NODES = 3;
 
-export const useFlowStore = create<FlowStore>((set) => ({
+function pipeline(
+  nodes: Node<NodeData>[],
+  inputText: string,
+  mode: "encrypt" | "decrypt"
+): PipelineResult {
+  if (nodes.length < MIN_CIPHER_NODES) {
+    return { outputText: "", intermediates: {} };
+  }
+  const result = executePipeline(
+    nodes.map((n) => ({ id: n.id, position: n.position, data: n.data })),
+    inputText,
+    mode
+  );
+  return { outputText: result.output, intermediates: result.intermediates };
+}
+
+const initialState = {
+  nodes: [],
+  edges: [],
+  selectedNodeId: null,
+  mode: "encrypt" as const,
+  inputText: "",
+  outputText: "",
+  intermediates: {},
+};
+
+export const useFlowStore = create<FlowStore>((set, get) => ({
   ...initialState,
 
-  setNodes: (nodes) => set({ nodes }),
+  setNodes: (nodes) => set({ nodes, ...pipeline(nodes, get().inputText, get().mode) }),
+
   setEdges: (edges) => set({ edges }),
 
-  addNode: (node) => set((s) => ({ nodes: [...s.nodes, node] })),
+  addNode: (node) => {
+    const { nodes, inputText, mode } = get();
+    const next = [...nodes, node];
+    set({ nodes: next, ...pipeline(next, inputText, mode) });
+  },
 
-  removeNode: (id) =>
-    set((s) => ({
-      nodes: s.nodes.filter((n) => n.id !== id),
-      edges: s.edges.filter((e) => e.source !== id && e.target !== id),
-      selectedNodeId: s.selectedNodeId === id ? null : s.selectedNodeId,
-    })),
+  removeNode: (id) => {
+    const { nodes, edges, selectedNodeId, inputText, mode } = get();
+    const next = nodes.filter((n) => n.id !== id);
+    set({
+      nodes: next,
+      edges: edges.filter((e) => e.source !== id && e.target !== id),
+      selectedNodeId: selectedNodeId === id ? null : selectedNodeId,
+      ...pipeline(next, inputText, mode),
+    });
+  },
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
-  updateNodeData: (id, data) =>
-    set((s) => ({
-      nodes: s.nodes.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, ...data } } : n
-      ),
-    })),
+  updateNodeData: (id, data) => {
+    const { nodes, inputText, mode } = get();
+    const next = nodes.map((n) =>
+      n.id === id ? { ...n, data: { ...n.data, ...data } } : n
+    );
+    set({ nodes: next, ...pipeline(next, inputText, mode) });
+  },
+
+  updateNodeParam: (id, key, value) => {
+    const { nodes, inputText, mode } = get();
+    const next = nodes.map((n) =>
+      n.id === id
+        ? { ...n, data: { ...n.data, params: { ...n.data.params, [key]: value } } }
+        : n
+    );
+    set({ nodes: next, ...pipeline(next, inputText, mode) });
+  },
+
+  setMode: (mode) => {
+    const { nodes, inputText } = get();
+    set({ mode, ...pipeline(nodes, inputText, mode) });
+  },
+
+  setInputText: (inputText) => {
+    const { nodes, mode } = get();
+    set({ inputText, ...pipeline(nodes, inputText, mode) });
+  },
 
   reset: () => set(initialState),
 }));
+
+export function makeNodeDefaults(algorithmId: string): { params: Record<string, string> } {
+  const cipher = getCipher(algorithmId);
+  const params: Record<string, string> = {};
+  cipher?.configFields.forEach((f) => { params[f.key] = f.defaultValue; });
+  return { params };
+}

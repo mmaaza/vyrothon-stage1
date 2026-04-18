@@ -1,66 +1,64 @@
 'use client'
-import { Trash2, Info } from "lucide-react";
-import { useFlowStore, type NodeData } from "@/store";
+import { Trash2, Info, ArrowRight, ArrowLeft, Copy, AlertTriangle } from "lucide-react";
+import { useFlowStore, getCipher, MIN_CIPHER_NODES, type NodeData } from "@/store";
 
-const CATEGORY_LABELS = {
-  sym:   "Symmetric Cipher",
-  asym:  "Asymmetric Cipher",
-  hash:  "Hash Function",
-  kdf:   "Key Derivation",
-  codec: "Codec",
-  io:    "I/O Node",
-};
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function IORow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", color: "var(--color-text-subtle)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+        {label}
+      </span>
+      <div
+        className="cs-code-block"
+        style={{ minHeight: 32, wordBreak: "break-all", fontSize: "0.68rem", lineHeight: 1.6, color: accent ? "var(--color-teal-600)" : undefined }}
+      >
+        {value || <span style={{ opacity: 0.35 }}>—</span>}
+      </div>
+    </div>
+  );
+}
 
 function EmptyState() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "var(--spacing-3)",
-        padding: "var(--spacing-8) var(--spacing-4)",
-        textAlign: "center",
-      }}
-    >
-      <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: "var(--radius-lg)",
-          background: "var(--color-surface-1)",
-          border: "1px solid var(--color-border)",
-          display: "grid",
-          placeItems: "center",
-          color: "var(--color-text-subtle)",
-        }}
-      >
-        <Info size={18} />
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--spacing-3)", padding: "var(--spacing-6) var(--spacing-4)", textAlign: "center" }}>
+      <div style={{ width: 36, height: 36, borderRadius: "var(--radius-lg)", background: "var(--color-surface-1)", border: "1px solid var(--color-border)", display: "grid", placeItems: "center", color: "var(--color-text-subtle)" }}>
+        <Info size={16} />
       </div>
-      <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem", color: "var(--color-text-subtle)", lineHeight: 1.6, margin: 0 }}>
-        Select a node to inspect and configure it.
+      <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "var(--color-text-subtle)", lineHeight: 1.6, margin: 0 }}>
+        Click a node to inspect its configuration and intermediate output.
       </p>
     </div>
   );
 }
 
 export default function Inspector() {
-  const { nodes, selectedNodeId, updateNodeData, removeNode } = useFlowStore();
+  const { nodes, selectedNodeId, mode, outputText, intermediates, updateNodeData, updateNodeParam, removeNode } = useFlowStore();
+  const nodeCount = nodes.length;
+  const pipelineReady = nodeCount >= MIN_CIPHER_NODES;
   const node = nodes.find((n) => n.id === selectedNodeId) ?? null;
   const d = node?.data as NodeData | undefined;
+  const cipher = d ? getCipher(d.algorithm) : null;
+  const inter = node ? intermediates[node.id] : null;
+
+  const ModeIcon = mode === "encrypt" ? ArrowRight : ArrowLeft;
 
   return (
-    <aside className="cs-panel">
+    <aside className="cs-panel" style={{ display: "flex", flexDirection: "column" }}>
       <div className="cs-panel-header">
         <span>Inspector</span>
         {d && (
           <span className={`cs-badge cs-badge--${d.category}`}>
-            {CATEGORY_LABELS[d.category]}
+            {cipher?.label ?? d.algorithm}
           </span>
         )}
       </div>
 
-      <div className="cs-panel-body">
+      {/* Node editor — scrollable middle */}
+      <div className="cs-panel-body" style={{ flex: 1, overflowY: "auto" }}>
         {!node || !d ? (
           <EmptyState />
         ) : (
@@ -75,45 +73,39 @@ export default function Inspector() {
               />
             </div>
 
-            <div className="cs-field">
-              <label className="cs-label">Algorithm</label>
-              <input
-                className="cs-input"
-                value={String(d.algorithm)}
-                readOnly
-                style={{ opacity: 0.55, cursor: "default" }}
-              />
-            </div>
-
-            {d.category !== "io" && (
-              <div className="cs-field">
-                <label className="cs-label" htmlFor="node-key">Secret Key</label>
+            {cipher?.configFields.map((field) => (
+              <div key={field.key} className="cs-field">
+                <label className="cs-label" htmlFor={`param-${field.key}`}>{field.label}</label>
                 <input
-                  id="node-key"
+                  id={`param-${field.key}`}
                   className="cs-input"
-                  type="password"
-                  placeholder="Enter key..."
-                  value={String(d.key ?? "")}
-                  onChange={(e) => updateNodeData(node.id, { key: e.target.value })}
+                  type={field.type}
+                  min={field.min}
+                  max={field.max}
+                  placeholder={field.placeholder}
+                  value={String(d.params?.[field.key] ?? field.defaultValue)}
+                  onChange={(e) => updateNodeParam(node.id, field.key, e.target.value)}
                 />
+              </div>
+            ))}
+
+            {/* Intermediate I/O */}
+            {inter ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-3)", paddingTop: "var(--spacing-2)", borderTop: "1px solid var(--color-border)" }}>
+                <div className="cs-panel-header" style={{ padding: 0, border: 0, marginBottom: 0 }}>
+                  <span>Intermediate I/O</span>
+                  <ModeIcon size={12} style={{ color: "var(--color-text-subtle)" }} />
+                </div>
+                <IORow label="Received" value={inter.input} />
+                <IORow label="Produced" value={inter.output} accent />
+              </div>
+            ) : (
+              <div className="cs-alert cs-alert--info" style={{ fontSize: "0.7rem" }}>
+                Enter text in the input panel to see intermediate values.
               </div>
             )}
 
-            <div
-              style={{
-                marginTop: "var(--spacing-2)",
-                padding: "var(--spacing-3)",
-                background: "var(--color-surface-1)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-md)",
-              }}
-            >
-              <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", color: "var(--color-text-subtle)", margin: 0, lineHeight: 1.6 }}>
-                ID: <span style={{ color: "var(--color-text-muted)" }}>{node.id}</span>
-              </p>
-            </div>
-
-            <div style={{ marginTop: "auto", paddingTop: "var(--spacing-4)" }}>
+            <div style={{ marginTop: "auto", paddingTop: "var(--spacing-2)" }}>
               <button
                 className="cs-btn cs-btn--danger cs-btn--sm"
                 style={{ width: "100%", justifyContent: "center" }}
@@ -124,6 +116,42 @@ export default function Inspector() {
               </button>
             </div>
           </>
+        )}
+      </div>
+
+      {/* Final output — always pinned to bottom */}
+      <div style={{ borderTop: "1px solid var(--color-border)", padding: "var(--spacing-3) var(--spacing-4)", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--spacing-2)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-2)" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>
+              {mode === "encrypt" ? "Ciphertext" : "Plaintext"}
+            </span>
+            <span className={`cs-badge cs-badge--${mode === "encrypt" ? "hash" : "io"}`}>
+              {mode === "encrypt" ? "OUT" : "RECOVERED"}
+            </span>
+          </div>
+          {outputText && (
+            <button
+              className="cs-btn cs-btn--ghost cs-btn--sm cs-btn--icon"
+              title="Copy to clipboard"
+              onClick={() => copyToClipboard(outputText)}
+            >
+              <Copy size={12} />
+            </button>
+          )}
+        </div>
+        {!pipelineReady ? (
+          <div className="cs-alert cs-alert--warn" style={{ fontSize: "0.72rem", gap: "var(--spacing-1_5)" }}>
+            <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>Need {MIN_CIPHER_NODES - nodeCount} more node{MIN_CIPHER_NODES - nodeCount !== 1 ? "s" : ""} — minimum {MIN_CIPHER_NODES} required.</span>
+          </div>
+        ) : (
+          <div
+            className="cs-code-block"
+            style={{ minHeight: 52, maxHeight: 120, overflowY: "auto", wordBreak: "break-all", fontSize: "0.7rem", lineHeight: 1.6, color: "var(--color-teal-600)" }}
+          >
+            {outputText || <span style={{ opacity: 0.35 }}>—</span>}
+          </div>
         )}
       </div>
     </aside>

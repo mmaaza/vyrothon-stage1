@@ -1,10 +1,11 @@
 'use client'
-import { Lock, Play, RotateCcw } from "lucide-react";
+import { Lock, RotateCcw, ArrowDown, ArrowUp, AlertCircle } from "lucide-react";
 import { useFlowStore } from "@/store";
 
 export default function Topbar() {
-  const { nodes, reset } = useFlowStore();
+  const { nodes, mode, setMode, reset } = useFlowStore();
   const nodeCount = nodes.length;
+  const tooFew = nodeCount > 0 && nodeCount < 3;
 
   return (
     <header className="cs-topbar">
@@ -13,24 +14,53 @@ export default function Topbar() {
         Cipher<span className="cs-wordmark-accent">Stack</span>
       </span>
 
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "0.65rem",
-          color: "var(--color-text-subtle)",
-          marginLeft: "var(--spacing-3)",
-        }}
-      >
-        Node-Based Cascade Encryption Builder
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", color: "var(--color-text-subtle)", marginLeft: "var(--spacing-3)" }}>
+        Cascade Encryption Builder
       </span>
 
       <div style={{ flex: 1 }} />
 
-      {nodeCount > 0 && (
-        <span className="cs-badge cs-badge--io">
-          {nodeCount} node{nodeCount !== 1 ? "s" : ""}
+      {tooFew && (
+        <span className="cs-badge cs-badge--warn" style={{ gap: "var(--spacing-1)", display: "inline-flex", alignItems: "center" }}>
+          <AlertCircle size={10} />
+          min 3 nodes
         </span>
       )}
+
+      {nodeCount >= 3 && (
+        <span className="cs-badge cs-badge--success">
+          {nodeCount} nodes
+        </span>
+      )}
+
+      <div className="cs-toolbar-sep" />
+
+      {/* Mode toggle */}
+      <div style={{
+        display: "flex",
+        gap: 2,
+        background: "var(--color-surface-1)",
+        padding: 2,
+        borderRadius: "var(--radius-md)",
+        border: "1px solid var(--color-border)",
+      }}>
+        <button
+          className={`cs-btn cs-btn--sm ${mode === "encrypt" ? "cs-btn--primary" : "cs-btn--ghost"}`}
+          onClick={() => setMode("encrypt")}
+          style={{ gap: "var(--spacing-1)" }}
+        >
+          <ArrowDown size={11} />
+          Encrypt
+        </button>
+        <button
+          className={`cs-btn cs-btn--sm ${mode === "decrypt" ? "cs-btn--primary" : "cs-btn--ghost"}`}
+          onClick={() => setMode("decrypt")}
+          style={{ gap: "var(--spacing-1)" }}
+        >
+          <ArrowUp size={11} />
+          Decrypt
+        </button>
+      </div>
 
       <div className="cs-toolbar-sep" />
 
@@ -40,14 +70,6 @@ export default function Topbar() {
         onClick={reset}
       >
         <RotateCcw size={14} />
-      </button>
-
-      <button
-        className="cs-btn cs-btn--primary cs-btn--sm"
-        disabled={nodeCount === 0}
-      >
-        <Play size={12} />
-        Run Pipeline
       </button>
     </header>
   );

@@ -15,7 +15,7 @@ import {
   type EdgeChange,
   type Node,
 } from "@xyflow/react";
-import { useFlowStore, ALGORITHMS, type NodeData } from "@/store";
+import { useFlowStore, getCipher, CIPHER_DEFS, makeNodeDefaults, type NodeData } from "@/store";
 import CipherNode from "./CipherNode";
 
 const nodeTypes = { cipher: CipherNode };
@@ -57,14 +57,15 @@ function FlowInner() {
       e.preventDefault();
       const algorithmId = e.dataTransfer.getData("application/cipherstack");
       if (!algorithmId) return;
-      const algo = ALGORITHMS.find((a) => a.id === algorithmId);
-      if (!algo) return;
+      const def = CIPHER_DEFS.find((c) => c.id === algorithmId);
+      if (!def) return;
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const { params } = makeNodeDefaults(algorithmId);
       addNode({
         id: `${algorithmId}-${Date.now()}`,
         type: "cipher",
         position,
-        data: { label: algo.label, algorithm: algo.id, category: algo.category, key: "" },
+        data: { label: def.label, algorithm: def.id, category: def.category, params },
       });
     },
     [screenToFlowPosition, addNode]
