@@ -76,16 +76,29 @@ export default function Inspector() {
             {cipher?.configFields.map((field) => (
               <div key={field.key} className="cs-field">
                 <label className="cs-label" htmlFor={`param-${field.key}`}>{field.label}</label>
-                <input
-                  id={`param-${field.key}`}
-                  className="cs-input"
-                  type={field.type}
-                  min={field.min}
-                  max={field.max}
-                  placeholder={field.placeholder}
-                  value={String(d.params?.[field.key] ?? field.defaultValue)}
-                  onChange={(e) => updateNodeParam(node.id, field.key, e.target.value)}
-                />
+                {field.type === "select" ? (
+                  <select
+                    id={`param-${field.key}`}
+                    className="cs-select"
+                    value={String(d.params?.[field.key] ?? field.defaultValue)}
+                    onChange={(e) => updateNodeParam(node.id, field.key, e.target.value)}
+                  >
+                    {field.options?.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id={`param-${field.key}`}
+                    className="cs-input"
+                    type={field.type}
+                    min={field.min}
+                    max={field.max}
+                    placeholder={field.placeholder}
+                    value={String(d.params?.[field.key] ?? field.defaultValue)}
+                    onChange={(e) => updateNodeParam(node.id, field.key, e.target.value)}
+                  />
+                )}
               </div>
             ))}
 

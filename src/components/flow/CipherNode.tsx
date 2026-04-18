@@ -49,16 +49,29 @@ function CipherNode({ id, data, selected }: NodeProps) {
           cipher.configFields.map((field) => (
             <div key={field.key} className="nodrag cs-field" style={{ gap: 3 }}>
               <label className="cs-label">{field.label}</label>
-              <input
-                className="cs-input nodrag"
-                type={field.type}
-                min={field.min}
-                max={field.max}
-                placeholder={field.placeholder}
-                value={String(d.params?.[field.key] ?? field.defaultValue)}
-                onChange={(e) => updateNodeParam(id, field.key, e.target.value)}
-                style={{ fontSize: "0.72rem", padding: "2px 6px" }}
-              />
+              {field.type === "select" ? (
+                <select
+                  className="cs-select nodrag"
+                  value={String(d.params?.[field.key] ?? field.defaultValue)}
+                  onChange={(e) => updateNodeParam(id, field.key, e.target.value)}
+                  style={{ fontSize: "0.72rem", padding: "2px 6px" }}
+                >
+                  {field.options?.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="cs-input nodrag"
+                  type={field.type}
+                  min={field.min}
+                  max={field.max}
+                  placeholder={field.placeholder}
+                  value={String(d.params?.[field.key] ?? field.defaultValue)}
+                  onChange={(e) => updateNodeParam(id, field.key, e.target.value)}
+                  style={{ fontSize: "0.72rem", padding: "2px 6px" }}
+                />
+              )}
             </div>
           ))
         ) : (
