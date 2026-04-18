@@ -47,6 +47,7 @@ export const MIN_CIPHER_NODES = 3;
 
 function pipeline(
   nodes: Node<NodeData>[],
+  edges: Edge[],
   inputText: string,
   mode: "encrypt" | "decrypt"
 ): PipelineResult {
@@ -55,6 +56,7 @@ function pipeline(
   }
   const result = executePipeline(
     nodes.map((n) => ({ id: n.id, position: n.position, data: n.data })),
+    edges.map((e) => ({ source: e.source, target: e.target })),
     inputText,
     mode
   );
@@ -74,55 +76,62 @@ const initialState = {
 export const useFlowStore = create<FlowStore>((set, get) => ({
   ...initialState,
 
-  setNodes: (nodes) => set({ nodes, ...pipeline(nodes, get().inputText, get().mode) }),
+  setNodes: (nodes) => {
+    const { edges, inputText, mode } = get();
+    set({ nodes, ...pipeline(nodes, edges, inputText, mode) });
+  },
 
-  setEdges: (edges) => set({ edges }),
+  setEdges: (edges) => {
+    const { nodes, inputText, mode } = get();
+    set({ edges, ...pipeline(nodes, edges, inputText, mode) });
+  },
 
   addNode: (node) => {
-    const { nodes, inputText, mode } = get();
+    const { nodes, edges, inputText, mode } = get();
     const next = [...nodes, node];
-    set({ nodes: next, ...pipeline(next, inputText, mode) });
+    set({ nodes: next, ...pipeline(next, edges, inputText, mode) });
   },
 
   removeNode: (id) => {
     const { nodes, edges, selectedNodeId, inputText, mode } = get();
     const next = nodes.filter((n) => n.id !== id);
+    const nextEdges = edges.filter((e) => e.source !== id && e.target !== id);
     set({
       nodes: next,
-      edges: edges.filter((e) => e.source !== id && e.target !== id),
+      edges: nextEdges,
       selectedNodeId: selectedNodeId === id ? null : selectedNodeId,
-      ...pipeline(next, inputText, mode),
+      ...pipeline(next, nextEdges, inputText, mode),
     });
   },
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
   updateNodeData: (id, data) => {
-    const { nodes, inputText, mode } = get();
+    const { nodes, edges, inputText, mode } = get();
     const next = nodes.map((n) =>
       n.id === id ? { ...n, data: { ...n.data, ...data } } : n
     );
-    set({ nodes: next, ...pipeline(next, inputText, mode) });
+    set({ nodes: next, ...pipeline(next, edges, inputText, mode) });
   },
 
   updateNodeParam: (id, key, value) => {
-    const { nodes, inputText, mode } = get();
+    const { nodes, edges, inputText, mode } = get();
     const next = nodes.map((n) =>
       n.id === id
         ? { ...n, data: { ...n.data, params: { ...n.data.params, [key]: value } } }
         : n
     );
-    set({ nodes: next, ...pipeline(next, inputText, mode) });
+    set({ nodes: next, ...pipeline(next, edges, inputText, mode) });
   },
 
   setMode: (mode) => {
-    const { nodes, inputText } = get();
-    set({ mode, ...pipeline(nodes, inputText, mode) });
+    const { nodes, edges, inputText } = get();
+    set({ mode, ...pipeline(nodes, edges, inputText, mode) });
   },
 
   setInputText: (inputText) => {
-    const { nodes, mode } = get();
-    set({ inputText, ...pipeline(nodes, inputText, mode) });
+    const { nodes, edges, mode } = get();
+    set({ inputText, ...pipeline(nodes, edges, inputText, mode) });
   },
 
   reset: () => set(initialState),
