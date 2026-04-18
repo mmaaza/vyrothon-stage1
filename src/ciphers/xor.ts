@@ -17,12 +17,29 @@ function xorBytes(s: string, keyBytes: number[]): string {
   ).join("");
 }
 
+function textToHex(s: string): string {
+  return [...s]
+    .map((c) => (c.charCodeAt(0) & 0xff).toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function hexToText(hex: string): string {
+  const clean = hex.replace(/[^0-9a-fA-F]/g, "");
+  if (!clean) return "";
+  const even = clean.length % 2 === 0 ? clean : `0${clean}`;
+  let out = "";
+  for (let i = 0; i < even.length; i += 2) {
+    out += String.fromCharCode(parseInt(even.slice(i, i + 2), 16));
+  }
+  return out;
+}
+
 const xorDef: CipherDef = {
   id: "xor",
   label: "XOR",
   category: "sym",
   badge: "SYM",
-  description: "XOR each UTF-16 unit with a repeating key (self-inverse); output often includes non-printable bytes",
+  description: "XOR with a repeating key; encryption outputs hex text",
   configFields: [
     {
       key: "key",
@@ -42,8 +59,14 @@ const xorDef: CipherDef = {
       ],
     },
   ],
-  encrypt: (s, p) => xorBytes(s, parseKeyBytes(p.key ?? "key", p.keyEncoding ?? "utf8")),
-  decrypt: (s, p) => xorBytes(s, parseKeyBytes(p.key ?? "key", p.keyEncoding ?? "utf8")),
+  encrypt: (s, p) => {
+    const key = parseKeyBytes(p.key ?? "key", p.keyEncoding ?? "utf8");
+    return textToHex(xorBytes(s, key));
+  },
+  decrypt: (s, p) => {
+    const key = parseKeyBytes(p.key ?? "key", p.keyEncoding ?? "utf8");
+    return xorBytes(hexToText(s), key);
+  },
 };
 
 export default xorDef;
