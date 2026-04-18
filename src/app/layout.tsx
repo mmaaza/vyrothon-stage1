@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Poppins, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import '@xyflow/react/dist/style.css';
+import "@xyflow/react/dist/style.css";
+import "./xyflow-cipher-overrides.css";
 
 const poppins = Poppins({
   variable: "--font-poppins",

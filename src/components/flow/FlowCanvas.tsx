@@ -39,7 +39,7 @@ const defaultEdgeOptions = {
 
 function FlowInner() {
   const { screenToFlowPosition } = useReactFlow();
-  const { nodes, edges, setNodes, setEdges, addNode, selectNode } = useFlowStore();
+  const { nodes, edges, mode, setNodes, setEdges, addNode, selectNode } = useFlowStore();
   const reconnectExcludeEdgeIdRef = useRef<string | null>(null);
 
   const isValidConnection = useCallback((conn: Connection | Edge) => {
@@ -130,6 +130,7 @@ function FlowInner() {
 
   return (
     <ReactFlow
+      className={`cs-flow cs-flow--${mode}`}
       nodes={nodes}
       edges={edges}
       onNodesChange={onNodesChange}

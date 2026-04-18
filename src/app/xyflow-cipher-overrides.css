@@ -1,0 +1,8 @@
+/* Load after @xyflow/react/dist/style.css — dash “flow” matches pipeline direction */
+.cs-flow--decrypt .react-flow__edge.animated path:not(.react-flow__edge-interaction) {
+  animation-direction: reverse;
+}
+
+.cs-flow--decrypt .react-flow__connection .animated {
+  animation-direction: reverse;
+}
