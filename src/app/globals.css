@@ -415,6 +415,11 @@
 
   .cs-palette-item:hover { background: var(--color-surface-1); }
   .cs-palette-item:active { cursor: grabbing; background: var(--color-surface-2); }
+  .cs-palette-item:focus-visible {
+    outline: 2px solid var(--color-cipher-500);
+    outline-offset: 2px;
+    background: var(--color-surface-1);
+  }
 
   .cs-palette-badge {
     font-family: var(--font-mono);
@@ -686,6 +691,7 @@
     height: 20px;
     background: var(--color-border);
     margin-inline: var(--spacing-0_5);
+    flex-shrink: 0;
   }
 
 
