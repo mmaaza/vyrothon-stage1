@@ -137,6 +137,20 @@ export const useFlowStore = create<FlowStore>((set, get) => ({
   reset: () => set(initialState),
 }));
 
+/** Each node may have at most one outgoing and one incoming edge (simple chain / path). */
+export function withinSingleWireDegreeLimit(
+  edges: Edge[],
+  source: string,
+  target: string,
+  excludeEdgeId?: string | null
+): boolean {
+  if (!source || !target || source === target) return false;
+  const skip = excludeEdgeId ?? undefined;
+  const sourceHasOut = edges.some((e) => e.source === source && e.id !== skip);
+  const targetHasIn = edges.some((e) => e.target === target && e.id !== skip);
+  return !sourceHasOut && !targetHasIn;
+}
+
 export function getChainLength(nodes: Node<NodeData>[], edges: Edge[]): number {
   const nodeIds = new Set(nodes.map((n) => n.id));
   const successors = new Map<string, string>();

@@ -1,5 +1,5 @@
 'use client'
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -13,11 +13,20 @@ import {
   ReactFlowProvider,
   type Connection,
   type Edge,
+  type FinalConnectionState,
+  type HandleType,
   type NodeChange,
   type EdgeChange,
   type Node,
 } from "@xyflow/react";
-import { useFlowStore, getCipher, CIPHER_DEFS, makeNodeDefaults, type NodeData } from "@/store";
+import {
+  useFlowStore,
+  getCipher,
+  CIPHER_DEFS,
+  makeNodeDefaults,
+  withinSingleWireDegreeLimit,
+  type NodeData,
+} from "@/store";
 import CipherNode from "./CipherNode";
 
 const nodeTypes = { cipher: CipherNode };
@@ -31,6 +40,28 @@ const defaultEdgeOptions = {
 function FlowInner() {
   const { screenToFlowPosition } = useReactFlow();
   const { nodes, edges, setNodes, setEdges, addNode, selectNode } = useFlowStore();
+  const reconnectExcludeEdgeIdRef = useRef<string | null>(null);
+
+  const isValidConnection = useCallback((conn: Connection | Edge) => {
+    const { edges: current } = useFlowStore.getState();
+    const edgeId =
+      "edgeId" in conn && typeof (conn as Connection & { edgeId?: string }).edgeId === "string"
+        ? (conn as Connection & { edgeId: string }).edgeId
+        : undefined;
+    const exclude = edgeId ?? reconnectExcludeEdgeIdRef.current ?? undefined;
+    return withinSingleWireDegreeLimit(current, conn.source, conn.target, exclude);
+  }, []);
+
+  const onReconnectStart = useCallback((_e: unknown, edge: Edge) => {
+    reconnectExcludeEdgeIdRef.current = edge.id;
+  }, []);
+
+  const onReconnectEnd = useCallback(
+    (_evt: unknown, _edge: Edge, _handle: HandleType, _state: FinalConnectionState) => {
+      reconnectExcludeEdgeIdRef.current = null;
+    },
+    []
+  );
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) =>
@@ -44,14 +75,23 @@ function FlowInner() {
   );
 
   const onConnect = useCallback(
-    (connection: Connection) =>
-      setEdges(addEdge({ ...connection, animated: true, style: { stroke: "var(--color-cipher-500)", strokeWidth: 1.5 } }, edges)),
-    [edges, setEdges]
+    (connection: Connection) => {
+      const current = useFlowStore.getState().edges;
+      if (!withinSingleWireDegreeLimit(current, connection.source, connection.target)) return;
+      setEdges(
+        addEdge(
+          { ...connection, animated: true, style: { stroke: "var(--color-cipher-500)", strokeWidth: 1.5 } },
+          current
+        )
+      );
+    },
+    [setEdges]
   );
 
   const onReconnect = useCallback(
     (oldEdge: Edge, newConnection: Connection) => {
       const current = useFlowStore.getState().edges;
+      if (!withinSingleWireDegreeLimit(current, newConnection.source, newConnection.target, oldEdge.id)) return;
       setEdges(reconnectEdge(oldEdge, newConnection, current));
     },
     [setEdges]
@@ -96,6 +136,9 @@ function FlowInner() {
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       onReconnect={onReconnect}
+      onReconnectStart={onReconnectStart}
+      onReconnectEnd={onReconnectEnd}
+      isValidConnection={isValidConnection}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onNodeClick={onNodeClick}
