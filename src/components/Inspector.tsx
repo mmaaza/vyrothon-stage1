@@ -1,6 +1,6 @@
 'use client'
-import { Trash2, Info, ArrowRight, ArrowLeft, Copy, AlertTriangle } from "lucide-react";
-import { useFlowStore, getCipher, MIN_CIPHER_NODES, type NodeData } from "@/store";
+import { Trash2, Info, ArrowRight, ArrowLeft, Copy } from "lucide-react";
+import { useFlowStore, getCipher, MIN_CIPHER_NODES, getChainLength, type NodeData } from "@/store";
 
 function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text).catch(() => {});
@@ -36,9 +36,9 @@ function EmptyState() {
 }
 
 export default function Inspector() {
-  const { nodes, selectedNodeId, mode, outputText, intermediates, updateNodeData, updateNodeParam, removeNode } = useFlowStore();
-  const nodeCount = nodes.length;
-  const pipelineReady = nodeCount >= MIN_CIPHER_NODES;
+  const { nodes, edges, selectedNodeId, mode, outputText, intermediates, updateNodeData, updateNodeParam, removeNode } = useFlowStore();
+  const chainLength = getChainLength(nodes, edges);
+  const pipelineReady = chainLength >= MIN_CIPHER_NODES;
   const node = nodes.find((n) => n.id === selectedNodeId) ?? null;
   const d = node?.data as NodeData | undefined;
   const cipher = d ? getCipher(d.algorithm) : null;
@@ -132,41 +132,36 @@ export default function Inspector() {
         )}
       </div>
 
-      {/* Final output — always pinned to bottom */}
-      <div style={{ borderTop: "1px solid var(--color-border)", padding: "var(--spacing-3) var(--spacing-4)", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--spacing-2)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-2)" }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>
-              {mode === "encrypt" ? "Ciphertext" : "Plaintext"}
-            </span>
-            <span className={`cs-badge cs-badge--${mode === "encrypt" ? "hash" : "io"}`}>
-              {mode === "encrypt" ? "OUT" : "RECOVERED"}
-            </span>
+      {/* Final output — only rendered when chain has ≥ MIN_CIPHER_NODES linked nodes */}
+      {pipelineReady && (
+        <div style={{ borderTop: "1px solid var(--color-border)", padding: "var(--spacing-3) var(--spacing-4)", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--spacing-2)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-2)" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>
+                {mode === "encrypt" ? "Ciphertext" : "Plaintext"}
+              </span>
+              <span className={`cs-badge cs-badge--${mode === "encrypt" ? "hash" : "io"}`}>
+                {mode === "encrypt" ? "OUT" : "RECOVERED"}
+              </span>
+            </div>
+            {outputText && (
+              <button
+                className="cs-btn cs-btn--ghost cs-btn--sm cs-btn--icon"
+                title="Copy to clipboard"
+                onClick={() => copyToClipboard(outputText)}
+              >
+                <Copy size={12} />
+              </button>
+            )}
           </div>
-          {outputText && (
-            <button
-              className="cs-btn cs-btn--ghost cs-btn--sm cs-btn--icon"
-              title="Copy to clipboard"
-              onClick={() => copyToClipboard(outputText)}
-            >
-              <Copy size={12} />
-            </button>
-          )}
-        </div>
-        {!pipelineReady ? (
-          <div className="cs-alert cs-alert--warn" style={{ fontSize: "0.72rem", gap: "var(--spacing-1_5)" }}>
-            <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span>Need {MIN_CIPHER_NODES - nodeCount} more node{MIN_CIPHER_NODES - nodeCount !== 1 ? "s" : ""} — minimum {MIN_CIPHER_NODES} required.</span>
-          </div>
-        ) : (
           <div
             className="cs-code-block"
             style={{ minHeight: 52, maxHeight: 120, overflowY: "auto", wordBreak: "break-all", fontSize: "0.7rem", lineHeight: 1.6, color: "var(--color-teal-600)" }}
           >
             {outputText || <span style={{ opacity: 0.35 }}>—</span>}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </aside>
   );
 }

@@ -137,6 +137,29 @@ export const useFlowStore = create<FlowStore>((set, get) => ({
   reset: () => set(initialState),
 }));
 
+export function getChainLength(nodes: Node<NodeData>[], edges: Edge[]): number {
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const successors = new Map<string, string>();
+  const inDegree = new Map<string, number>();
+  for (const n of nodes) inDegree.set(n.id, 0);
+  for (const e of edges) {
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    successors.set(e.source, e.target);
+    inDegree.set(e.target, (inDegree.get(e.target) ?? 0) + 1);
+  }
+  const head = nodes.find((n) => inDegree.get(n.id) === 0 && successors.has(n.id));
+  if (!head) return 0;
+  let count = 0;
+  let cur: string | undefined = head.id;
+  const visited = new Set<string>();
+  while (cur && !visited.has(cur)) {
+    visited.add(cur);
+    count++;
+    cur = successors.get(cur);
+  }
+  return count;
+}
+
 export function makeNodeDefaults(algorithmId: string): { params: Record<string, string> } {
   const cipher = getCipher(algorithmId);
   const params: Record<string, string> = {};

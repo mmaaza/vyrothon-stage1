@@ -1,11 +1,11 @@
 'use client'
 import { Lock, RotateCcw, ArrowDown, ArrowUp, AlertCircle } from "lucide-react";
-import { useFlowStore } from "@/store";
+import { useFlowStore, getChainLength, MIN_CIPHER_NODES } from "@/store";
 
 export default function Topbar() {
-  const { nodes, mode, setMode, reset } = useFlowStore();
-  const nodeCount = nodes.length;
-  const tooFew = nodeCount > 0 && nodeCount < 3;
+  const { nodes, edges, mode, setMode, reset } = useFlowStore();
+  const chainLength = getChainLength(nodes, edges);
+  const tooFew = nodes.length > 0 && chainLength < MIN_CIPHER_NODES;
 
   return (
     <header className="cs-topbar">
@@ -27,9 +27,9 @@ export default function Topbar() {
         </span>
       )}
 
-      {nodeCount >= 3 && (
+      {chainLength >= MIN_CIPHER_NODES && (
         <span className="cs-badge cs-badge--success">
-          {nodeCount} nodes
+          {chainLength} linked
         </span>
       )}
 
