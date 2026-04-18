@@ -8,9 +8,11 @@ import {
   addEdge,
   applyNodeChanges,
   applyEdgeChanges,
+  reconnectEdge,
   useReactFlow,
   ReactFlowProvider,
   type Connection,
+  type Edge,
   type NodeChange,
   type EdgeChange,
   type Node,
@@ -45,6 +47,14 @@ function FlowInner() {
     (connection: Connection) =>
       setEdges(addEdge({ ...connection, animated: true, style: { stroke: "var(--color-cipher-500)", strokeWidth: 1.5 } }, edges)),
     [edges, setEdges]
+  );
+
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      const current = useFlowStore.getState().edges;
+      setEdges(reconnectEdge(oldEdge, newConnection, current));
+    },
+    [setEdges]
   );
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -85,6 +95,7 @@ function FlowInner() {
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      onReconnect={onReconnect}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onNodeClick={onNodeClick}
