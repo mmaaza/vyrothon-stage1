@@ -1,5 +1,7 @@
 export type { ConfigField, CipherDef } from "./types";
 
+export { formatCipherTextForDisplay } from "./display";
+
 import caesarDef       from "./caesar";
 import xorDef          from "./xor";
 import vigenereDef     from "./vigenere";

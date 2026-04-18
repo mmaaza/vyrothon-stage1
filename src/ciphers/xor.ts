@@ -22,7 +22,7 @@ const xorDef: CipherDef = {
   label: "XOR",
   category: "sym",
   badge: "SYM",
-  description: "XOR every byte against a repeating key (self-inverse)",
+  description: "XOR each UTF-16 unit with a repeating key (self-inverse); output often includes non-printable bytes",
   configFields: [
     {
       key: "key",

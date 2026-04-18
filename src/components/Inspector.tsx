@@ -1,6 +1,6 @@
 'use client'
 import { Trash2, Info, ArrowRight, ArrowLeft, Copy } from "lucide-react";
-import { useFlowStore, getCipher, MIN_CIPHER_NODES, getChainLength, type NodeData } from "@/store";
+import { useFlowStore, getCipher, MIN_CIPHER_NODES, getChainLength, formatCipherTextForDisplay, type NodeData } from "@/store";
 
 function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text).catch(() => {});
@@ -109,8 +109,8 @@ export default function Inspector() {
                   <span>Intermediate I/O</span>
                   <ModeIcon size={12} style={{ color: "var(--color-text-subtle)" }} />
                 </div>
-                <IORow label="Received" value={inter.input} />
-                <IORow label="Produced" value={inter.output} accent />
+                <IORow label="Received" value={formatCipherTextForDisplay(inter.input)} />
+                <IORow label="Produced" value={formatCipherTextForDisplay(inter.output)} accent />
               </div>
             ) : (
               <div className="cs-alert cs-alert--info" style={{ fontSize: "0.7rem" }}>
@@ -147,7 +147,7 @@ export default function Inspector() {
             {outputText && (
               <button
                 className="cs-btn cs-btn--ghost cs-btn--sm cs-btn--icon"
-                title="Copy to clipboard"
+                title="Copy raw output (control characters preserved)"
                 onClick={() => copyToClipboard(outputText)}
               >
                 <Copy size={12} />
@@ -158,7 +158,7 @@ export default function Inspector() {
             className="cs-code-block"
             style={{ minHeight: 52, maxHeight: 120, overflowY: "auto", wordBreak: "break-all", fontSize: "0.7rem", lineHeight: 1.6, color: "var(--color-teal-600)" }}
           >
-            {outputText || <span style={{ opacity: 0.35 }}>—</span>}
+            {outputText ? formatCipherTextForDisplay(outputText) : <span style={{ opacity: 0.35 }}>—</span>}
           </div>
         </div>
       )}

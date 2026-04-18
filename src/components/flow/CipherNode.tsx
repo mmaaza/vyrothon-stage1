@@ -2,7 +2,7 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Lock, Code2 } from "lucide-react";
-import { useFlowStore, getCipher, type NodeData } from "@/store";
+import { useFlowStore, getCipher, formatCipherTextForDisplay, type NodeData } from "@/store";
 
 const ICONS = { sym: Lock, codec: Code2 } as const;
 const BADGES = { sym: "SYM", codec: "ENC" } as const;
@@ -24,6 +24,11 @@ function CipherNode({ id, data, selected }: NodeProps) {
   const mode = useFlowStore((s) => s.mode);
 
   const cipher = getCipher(d.algorithm);
+  const formattedIntermediate = intermediate?.output
+    ? formatCipherTextForDisplay(intermediate.output)
+    : "";
+  const intermediatePreview =
+    formattedIntermediate.length > 56 ? `${formattedIntermediate.slice(0, 56)}…` : formattedIntermediate;
 
   return (
     <div
@@ -86,8 +91,8 @@ function CipherNode({ id, data, selected }: NodeProps) {
               {mode === "encrypt" ? "▸ output" : "◂ output"}
             </span>
             <span style={{ fontSize: "0.65rem", color: "var(--color-teal-500)", fontFamily: "var(--font-mono)", wordBreak: "break-all", lineHeight: 1.4 }}>
-              {intermediate.output
-                ? intermediate.output.slice(0, 36) + (intermediate.output.length > 36 ? "…" : "")
+              {intermediate?.output
+                ? intermediatePreview
                 : <span style={{ opacity: 0.4 }}>—</span>}
             </span>
           </div>

@@ -1,9 +1,15 @@
 import { create } from "zustand";
 import type { Node, Edge } from "@xyflow/react";
-import { executePipeline, getCipher, CIPHER_DEFS, PALETTE_GROUPS } from "./ciphers";
+import {
+  executePipeline,
+  getCipher,
+  CIPHER_DEFS,
+  PALETTE_GROUPS,
+  formatCipherTextForDisplay,
+} from "./ciphers";
 
 export type { CipherDef, ConfigField } from "./ciphers";
-export { CIPHER_DEFS, PALETTE_GROUPS, getCipher };
+export { CIPHER_DEFS, PALETTE_GROUPS, getCipher, formatCipherTextForDisplay };
 
 export type NodeCategory = "sym" | "asym" | "hash" | "kdf" | "codec" | "io";
 
