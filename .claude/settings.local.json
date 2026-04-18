@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const z = require\\('zustand'\\); console.log\\('zustand ok'\\);\")",
+      "Bash(node -e \"const l = require\\('/d/web-work/web-work/vyrothon-stage1/node_modules/lucide-react'\\); console.log\\(['Lock','Key','Hash','Layers','Code2','ArrowRightLeft','Play','RotateCcw','Trash2','Info'].map\\(n => n + ':' + \\(n in l\\)\\).join\\('\\\\n'\\)\\)\")"
+    ]
+  }
+}
