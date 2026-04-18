@@ -27,11 +27,11 @@ export default function Topbar() {
         </span>
       )}
 
-      {chainLength >= MIN_CIPHER_NODES && (
+      {/* {chainLength >= MIN_CIPHER_NODES && (
         <span className="cs-badge cs-badge--success">
           {chainLength} linked
         </span>
-      )}
+      )} */}
 
       <div className="cs-toolbar-sep" />
 
